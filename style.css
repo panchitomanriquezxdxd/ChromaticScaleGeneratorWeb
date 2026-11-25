@@ -1,0 +1,63 @@
+:root {
+  --bg: #e6ecef; --panel: #f7f9fa; --ink: #16232f; --muted: #556673; --line: #c3cfd7;
+  --amber: #f2a900; --amber-deep: #b87900; --ivory: #fcfbf6; --ivory-off: #dfe3e0;
+  --focus: #0b5cad;
+  font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: var(--ink);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); line-height: 1.5; }
+main { max-width: 760px; margin: 0 auto; padding: 28px 18px 48px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+h1 { margin: 0; font-size: clamp(1.7rem, 5vw, 2.4rem); font-weight: 800; letter-spacing: -0.02em; }
+h2 { margin: 0 0 10px; font-size: 1.05rem; font-weight: 700; }
+.intro { color: var(--muted); margin: 6px 0 22px; max-width: 62ch; }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+
+button, .btn {
+  font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block;
+  border: 1px solid var(--ink); background: var(--ink); color: var(--ivory);
+  padding: 8px 14px; border-radius: 6px;
+}
+button.ghost, .btn.ghost { background: transparent; color: var(--ink); }
+button.primary { background: var(--amber); border-color: var(--amber-deep); color: var(--ink); padding: 11px 22px; font-size: 1.05rem; }
+button:disabled { opacity: .5; cursor: progress; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.drop { border: 2px dashed var(--line); border-radius: 8px; padding: 18px; text-align: center; }
+.drop.over { border-color: var(--amber-deep); background: #fff6dd; }
+.drop p { margin: 0 0 10px; color: var(--muted); }
+.drop .row { justify-content: center; }
+.samples { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 4px; counter-reset: s; }
+.samples li { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 6px; background: #fff; border: 1px solid var(--line); counter-increment: s; }
+.samples li::before { content: counter(s); font-variant-numeric: tabular-nums; min-width: 1.6em; color: var(--muted); }
+.samples .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.samples .du { color: var(--muted); font-variant-numeric: tabular-nums; }
+.samples button { padding: 0 8px; background: transparent; color: var(--ink); border-color: var(--line); }
+
+.kbwrap { overflow-x: auto; padding-bottom: 4px; }
+.keyboard { position: relative; height: 112px; min-width: 100%; border: 1px solid var(--ink); border-radius: 0 0 6px 6px; background: var(--ink); }
+.key { position: absolute; top: 0; }
+.key.w { height: 100%; background: var(--ivory-off); border-right: 1px solid var(--ink); display: flex; align-items: flex-end; justify-content: center; font-size: .68rem; color: var(--muted); padding-bottom: 4px; }
+.key.w.on { background: var(--amber); color: var(--ink); }
+.key.b { height: 62%; background: var(--ink); border-radius: 0 0 3px 3px; z-index: 2; }
+.key.b.on { background: var(--amber-deep); }
+.caption { margin: 8px 0 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 12px; }
+label { display: grid; gap: 4px; font-size: .9rem; }
+select, input[type=number], input[type=text] { font: inherit; padding: 7px 8px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); width: 100%; }
+label.check { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 1rem; }
+
+.actions { display: flex; align-items: center; gap: 14px; margin: 18px 0 8px; flex-wrap: wrap; }
+#status { color: var(--muted); }
+progress { width: 100%; height: 8px; accent-color: var(--amber-deep); margin-bottom: 16px; }
+audio { width: 100%; margin-bottom: 12px; }
+.warnings { margin: 12px 0 0; padding-left: 18px; color: #8a4b00; }
+footer { color: var(--muted); font-size: .85rem; margin-top: 24px; }
+footer a { color: inherit; }
+@media (prefers-reduced-motion: no-preference) { .drop { transition: background .15s, border-color .15s; } }
+.samples li.emptyrow { background: transparent; border-style: dashed; color: var(--muted); }
+.samples li.emptyrow::before { content: none; }
+[hidden] { display: none !important; }
