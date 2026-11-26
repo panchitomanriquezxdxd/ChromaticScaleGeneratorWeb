@@ -22,7 +22,11 @@ Settings → Pages → Deploy from a branch → `main` / `(root)`. Para probar e
 
 ## Diferencias con la versión de escritorio
 
-El original usa Praat (Parselmouth). En `js/dsp.js` se portó la lógica de Praat que usa el programa: `To Pitch (ac)` con sus parámetros por defecto (autocorrelación normalizada con ventana Hanning, candidatos, costos de octava y de voz/sin voz, camino de Viterbi), pulsos de pitch y resíntesis overlap-add (PSOLA) con pitch fijo. Está escrito a partir del algoritmo publicado, no del código fuente de Praat, así que el resultado es muy parecido pero no idéntico. Si un sample no tiene pitch detectable, se deja sin afinar y se avisa.
+El original usa Praat (Parselmouth). `js/praat.js` es un port, función por función, del código fuente de Praat (github.com/praat/praat) que usa el programa: lectura de WAV, `Resample` (48000, 1), `Convert to mono`, `To Manipulation` (`To Pitch (ac)` con camino de Viterbi, pulsos por correlación cruzada, `Pitch: To PitchTier`), `Formula` / `Replace pitch tier` y `Get resynthesis (overlap-add)`, además de guardar el WAV de 16 bits con el mismo redondeo de Praat. `js/dsp.js` encadena esas llamadas igual que `chromatic_gen.py`.
+
+**Verificación:** `node tests/compare-with-praat.mjs` compara el resultado con el de Praat compilado desde su código fuente (audios a 22,05/24/44,1/48/96 kHz, estéreo, ruido sin pitch): las muestras son idénticas. Un chromatic completo (varios samples, gap y concatenación) también sale idéntico byte a byte al del script original. La única parte que no es copia literal es la FFT (Praat usa FFTPACK, aquí una radix-2); da lo mismo salvo el redondeo de punto flotante. Si un sample no tiene pitch detectable, Praat devuelve el sample sin tocar (sin componente continua) y la web lo avisa.
+
+Los formatos que no son WAV (mp3, ogg…) los decodifica el navegador; Praat no los lee, es una extensión de la web.
 
 ## Licencia
 

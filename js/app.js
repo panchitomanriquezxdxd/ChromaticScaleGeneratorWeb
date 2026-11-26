@@ -1,4 +1,4 @@
-import { SR, analyzePitch, findMarks, resynth, concatWithGaps, noteFreq } from './dsp.js';
+import { SR, readSound, prepareSound, soundData, analyze, resynth, concatWithGaps, noteFreq } from './dsp.js';
 import { encodeWav } from './wav.js';
 import { makeZip } from './zip.js';
 import { W2D, TPL } from './dwp.js';
@@ -9,7 +9,7 @@ const MAX_RANGE = 60;
 
 const T = {
   es: {
-    intro: 'Crea una escala cromática a partir de tus samples: cada nota se afina con el mismo método de pitch que la versión de escritorio y todo corre en tu navegador, sin subir archivos.',
+    intro: 'Crea una escala cromática a partir de tus samples: cada nota se afina con el mismo código de Praat que la versión de escritorio y todo corre en tu navegador, sin subir archivos.',
     samples: 'Samples', drop: 'Suelta aquí tus audios (WAV u otros). Se ordenan por nombre: 1.wav, 2.wav… y se repiten en ciclo.',
     files: 'Elegir archivos', folder: 'Elegir carpeta', empty: 'Aún no hay samples.', remove: 'Quitar',
     range: 'Rango', note: 'Nota inicial', oct: 'Octava inicial', rng: 'Cantidad de semitonos', gap: 'Espacio entre samples (segundos)',
@@ -27,10 +27,10 @@ const T = {
     dwpTrim: 'Recortar silencios (quita el espacio entre samples)', dwpLoop: 'Crear loop automático en los sonidos que se sostienen',
     dwpMake: 'Crear .dwp', dwpSave: 'Guardar .dwp', dwpWorking: (i) => `Creando programa… ${i}%`,
     dwpDone: (n, r, l, sz) => `${n}: ${r} regiones, ${l} con loop · ${sz}`, dwpFail: (m) => `No se pudo crear el .dwp: ${m}`,
-    sample: 'sample', footer: 'Port web de Chromatic Scale Generator (GPL-3.0). La lógica de pitch de Praat (To Pitch ac + PSOLA) está portada a JavaScript: el resultado es muy parecido, pero no idéntico al de Praat.',
+    sample: 'sample', footer: 'Port web de Chromatic Scale Generator (GPL-3.0). El código de Praat que usa el programa (To Manipulation, To Pitch ac, resíntesis overlap-add) está portado a JavaScript y da el mismo resultado, muestra por muestra, que Praat.',
   },
   en: {
-    intro: 'Build a chromatic scale from your samples. Each note is pitched to the same target frequencies as the desktop version, and everything runs in your browser, with no uploads.',
+    intro: 'Build a chromatic scale from your samples. Each note is pitched with the same Praat code as the desktop version, and everything runs in your browser, with no uploads.',
     samples: 'Samples', drop: 'Drop your audio files here (WAV or others). They are sorted by name (1.wav, 2.wav…) and cycled.',
     files: 'Choose files', folder: 'Choose folder', empty: 'No samples yet.', remove: 'Remove',
     range: 'Range', note: 'Starting note', oct: 'Starting octave', rng: 'Number of semitones', gap: 'Sample gap (seconds)',
@@ -48,7 +48,7 @@ const T = {
     dwpTrim: 'Trim silences (removes the gap between samples)', dwpLoop: 'Create automatic loops on sustained sounds',
     dwpMake: 'Create .dwp', dwpSave: 'Save .dwp', dwpWorking: (i) => `Building program… ${i}%`,
     dwpDone: (n, r, l, sz) => `${n}: ${r} regions, ${l} looped · ${sz}`, dwpFail: (m) => `Could not create the .dwp: ${m}`,
-    sample: 'sample', footer: 'Web port of Chromatic Scale Generator (GPL-3.0). Praat\'s pitch logic (To Pitch ac + PSOLA) is ported to JavaScript: results are very close to Praat but not identical.',
+    sample: 'sample', footer: 'Web port of Chromatic Scale Generator (GPL-3.0). The Praat code the program uses (To Manipulation, To Pitch ac, overlap-add resynthesis) is ported to JavaScript and gives the same result as Praat, sample for sample.',
   },
 };
 
@@ -78,12 +78,16 @@ function applyLang() {
 }
 
 // ---------- samples ----------
+// Formatos que no son WAV (Praat tampoco los lee: es una extensión de la web).
+async function decodeOther(ab, ctx) {
+  const buf = await ctx.decodeAudioData(ab);
+  return { channels: Array.from({ length: buf.numberOfChannels }, (_, c) => buf.getChannelData(c)), sampleRate: buf.sampleRate };
+}
+
 async function decodeFile(file, ctx) {
-  const ab = await ctx.decodeAudioData(await file.arrayBuffer());
-  const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(ab.duration * SR)), SR);
-  const src = off.createBufferSource();
-  src.buffer = ab; src.connect(off.destination); src.start();
-  return (await off.startRendering()).getChannelData(0); // remuestreado a 48 kHz y mono
+  const sound = await readSound(await file.arrayBuffer(), (ab) => decodeOther(ab, ctx));
+  const sound48 = prepareSound(sound); // Resample (48000, 1) + Convert to mono, como Praat
+  return { sound48, data: soundData(sound48) };
 }
 
 async function addFiles(fileList) {
@@ -93,7 +97,7 @@ async function addFiles(fileList) {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   for (const f of files) {
     try {
-      state.samples.push({ name: f.name, data: await decodeFile(f, ctx), analysis: null, marks: null });
+      state.samples.push({ name: f.name, ...(await decodeFile(f, ctx)), analysis: null });
     } catch (e) {
       $('status').textContent = tr().failed(f.name);
     }
@@ -187,12 +191,9 @@ async function generate() {
       await tick();
       const s = state.samples[i % n];
       if (!p.pitched) { outs.push(s.data); continue; }
-      if (!s.analysis) {
-        s.analysis = analyzePitch(s.data);
-        s.marks = s.analysis.voiced ? findMarks(s.data, s.analysis) : [];
-      }
-      if (!s.analysis.voiced) { noPitch.add(s.name); outs.push(s.data); continue; }
-      outs.push(resynth(s.data, s.analysis, s.marks, noteFreq(i + startKey)));
+      if (!s.analysis) s.analysis = analyze(s.sound48);
+      if (!s.analysis.voiced) noPitch.add(s.name); // Praat devuelve el sample sin pitch (sin componente continua)
+      outs.push(resynth(s.analysis, noteFreq(i + startKey)));
     }
     const chromatic = concatWithGaps(outs, Math.round(p.gap * SR));
     state.urls.forEach(URL.revokeObjectURL); state.urls = [];

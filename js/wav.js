@@ -1,4 +1,5 @@
-// Codifica audio mono Float32 como WAV PCM de 16 bits.
+// Codifica audio mono (Float32/Float64) como WAV PCM de 16 bits, con la misma
+// conversión que usa Praat al guardar.
 // `cues` (opcional): [{ frame, label }] -> bloques "cue " + "LIST/adtl" que
 // FL Studio Slicex lee como cortes (un marker por nota).
 export function encodeWav(samples, sampleRate, cues = []) {
@@ -22,8 +23,10 @@ export function encodeWav(samples, sampleRate, cues = []) {
   v.setUint32(28, sampleRate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
   w(36, 'data'); v.setUint32(40, dataBytes, true);
   for (let i = 0; i < n; i++) {
-    const s = Math.max(-1, Math.min(1, samples[i]));
-    v.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+    // Igual que Praat (MelderFile_writeFloatToAudio): round (x * 32768), con recorte
+    const x = samples[i] * 32768;
+    const r = x < 0 ? -Math.floor(-x + 0.5) : Math.floor(x + 0.5); // C round(): empates se alejan de 0
+    v.setInt16(44 + i * 2, Math.max(-32768, Math.min(32767, r)), true);
   }
   let o = 44 + dataBytes;
   if (cues.length) {
