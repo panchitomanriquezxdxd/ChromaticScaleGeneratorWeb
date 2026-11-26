@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chromatic Scale Generator</title>
 <link rel="icon" href="icon.ico">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#16232f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Chromatic">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -87,5 +92,8 @@
   <footer id="footer"></footer>
 </main>
 <script type="module" src="js/app.js"></script>
+<script>
+if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+</script>
 </body>
 </html>
